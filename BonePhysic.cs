@@ -6,7 +6,6 @@ using UnityEngine;
 
 public class BonesPhysic : MonoBehaviour
 {
-    public const float G = 10f;
     public const float refFdt = 0.02f;
     public Vector3 wind;
 
