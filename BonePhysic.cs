@@ -6,6 +6,7 @@ using UnityEngine;
 
 public class BonesPhysic : MonoBehaviour
 {
+    public const float G = 10f;
     public const float refFdt = 0.02f;
     public Vector3 wind;
 
@@ -22,9 +23,9 @@ public class BonesPhysic : MonoBehaviour
     static List<GizmosNode> gizmosPoints = new List<GizmosNode>();
     struct GizmosNode 
     {
-        public GizmosNode(Transform pos0, Transform pos1, Color colorR) {
-            node = pos1;
-            nodeStart = pos0;
+        public GizmosNode(Bone boneChild, Color colorR) {
+            node = boneChild.bone;
+            nodeStart = boneChild.parent.bone;
             color = colorR;
         }
         public Transform node;
@@ -66,10 +67,13 @@ public class BonesPhysic : MonoBehaviour
                 id = 1;
 
             foreach (Transform child in node) {
-                if (DEBUG_MODE)
-                    gizmosPoints.Add(new GizmosNode(node, child, Color.red));
+                Bone boneChild = new Bone(child, tree, this);
 
-                children.Add(new Bone(child, tree, this));
+                children.Add(boneChild);
+
+                if (DEBUG_MODE) {
+                    gizmosPoints.Add(new GizmosNode(boneChild, Color.red));
+                }
             }
         }
     }
@@ -131,7 +135,7 @@ public class BonesPhysic : MonoBehaviour
 
     void UpdateBone(Bone bone) {
         if (bone.parent is not null)
-        {
+        { 
             float stiffness = bone.tree.config.properties.Stiffness * (refFdt / (fdt * fdt));
             float mass = bone.tree.config.properties.Mass;
 
@@ -139,33 +143,52 @@ public class BonesPhysic : MonoBehaviour
 
             Vector3 curPos = bone.curPos;
 
-            Vector3 scaledLocalPos = Vector3.Scale(bone.localPos, boneParent.lossyScale);
-
-            Quaternion parentRotation = boneParent.parent.rotation * bone.parent.localRot;
-            Vector3 target = boneParent.position + parentRotation * scaledLocalPos;
-
             float windNoise = Mathf.PerlinNoise(Time.time * (windStrength * 0.5f), bone.id);
             Vector3 windForce = wind.normalized * windNoise * windStrength;
 
-            Vector3 inertia = (curPos - bone.prevPos) * (1 - bone.tree.config.properties.Dumping);
-            Vector3 acceleration = (stiffness / mass) * (target - curPos) + windForce/mass;
-            Vector3 newPos = curPos + inertia + acceleration * (fdt * fdt);
+            Vector3 scaledLocalPos = Vector3.Scale(bone.localPos, boneParent.lossyScale);
 
-            bone.prevPos = curPos;
+            Quaternion parentRotation = boneParent.parent.rotation * bone.parent.localRot;
 
-            Vector3 dir = (newPos - boneParent.position).normalized;
-            Vector3 normalPos = boneParent.position + dir * scaledLocalPos.magnitude;
+            Vector3 baseDir, desiredDir, normalPos;
 
-            bone.curPos = normalPos;
+            if (bone.tree.config.Gravity) {
+                Vector3 target = boneParent.position + Vector3.down * scaledLocalPos.magnitude;
 
-            Vector3 localDir = (target - boneParent.position).normalized;
-            Vector3 desiredDir = (bone.curPos - boneParent.position).normalized;
+                Vector3 inertia = (curPos - bone.prevPos) * (1 - bone.tree.config.properties.Dumping);
+                Vector3 acceleration = (stiffness / mass) * (target - curPos) + mass * G * Vector3.down + windForce/mass;
+                Vector3 newPos = curPos + inertia + acceleration * (fdt * fdt);
 
-            Quaternion rotation = Quaternion.FromToRotation(localDir, desiredDir);
+                Vector3 dir = (newPos - boneParent.position).normalized;
+
+                normalPos = boneParent.position + dir * scaledLocalPos.magnitude;
+
+                baseDir = parentRotation * Vector3.up;
+                desiredDir = (normalPos - boneParent.position).normalized;
+            }
+            else {
+                Vector3 target = boneParent.position + parentRotation * scaledLocalPos;
+
+                Vector3 inertia = (curPos - bone.prevPos) * (1 - bone.tree.config.properties.Dumping);
+                Vector3 acceleration = (stiffness / mass) * (target - curPos) + windForce/mass;
+                Vector3 newPos = curPos + inertia + acceleration * (fdt * fdt);
+
+                Vector3 dir = (newPos - boneParent.position).normalized;
+
+                normalPos = boneParent.position + dir * scaledLocalPos.magnitude;
+
+                baseDir = (target - boneParent.position).normalized;
+                desiredDir = (normalPos - boneParent.position).normalized;
+            }
+
+            Quaternion rotation = Quaternion.FromToRotation(baseDir, desiredDir);
             Vector3 rotationVectorUp = rotation * (parentRotation * Vector3.up);
             Vector3 rotationVectorForward = rotation * (parentRotation * Vector3.forward);
 
             boneParent.rotation = Quaternion.LookRotation(rotationVectorForward, rotationVectorUp);
+
+            bone.prevPos = curPos;
+            bone.curPos = normalPos;
         } 
         foreach(Bone child in bone.children) {
             UpdateBone(child);
