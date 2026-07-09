@@ -18,6 +18,8 @@ public class RootConfig : MonoBehaviour
     public string BonesGroup;
 
     public bool Disable;
+
+    public bool Gravity;
     
     [Space]
     public Properties properties;
