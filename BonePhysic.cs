@@ -2,42 +2,37 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-#nullable enable annotations
-
 public class BonesPhysic : MonoBehaviour
 {
-    public const float G = 10f;
-    public const float refFdt = 0.02f;
-    public Vector3 wind;
-
-    public Camera gameCamera;
-
-    public float maxCameraDistance;
-
+    public float G = 9.81f;
+    public float refFdt = 0.02f;
     [Range(0, 100f)]
     public float windStrength;
+    public Vector3 wind;
+    public float maxCameraDistance;
 
-    static bool DEBUG_MODE;
-    public bool debugMode;
+    public static BonesPhysic singleton;
 
     static List<GizmosNode> gizmosPoints = new List<GizmosNode>();
-    struct GizmosNode 
+    public class GizmosNode 
     {
-        public GizmosNode(Bone boneChild, Color colorR) {
+        public Transform node;
+        public Transform nodeStart;
+        public Color color;
+
+        public GizmosNode(Bone boneChild, Color colorR) 
+        {
             node = boneChild.bone;
             nodeStart = boneChild.parent.bone;
             color = colorR;
         }
-        public Transform node;
-        public Transform nodeStart;
-        public Color color;
     }
 
-    class Bone
+    public class Bone
     {
         public Transform bone;
 
-        public Bone? parent;
+        public Bone parent;
         public List<Bone> children;
 
         public Vector3 prevPos;
@@ -47,9 +42,10 @@ public class BonesPhysic : MonoBehaviour
 
         public int id;
 
-        public BonesTree tree;
+        public BoneTree tree;
 
-        public Bone(Transform node, BonesTree treePtr, Bone? parentBone) {
+        public Bone(Transform node, BoneTree treePtr, Bone parentBone = null) 
+        {
             bone = node;
 
             children = new List<Bone>();
@@ -61,45 +57,26 @@ public class BonesPhysic : MonoBehaviour
             localRot = node.localRotation;
             tree = treePtr;
 
-            if (parentBone is not null) {
-                id = parentBone.id + 1;
-            } else
-                id = 1;
+            id = parentBone is null ? 1 : parentBone.id + 1;
 
             foreach (Transform child in node) {
                 Bone boneChild = new Bone(child, tree, this);
 
                 children.Add(boneChild);
 
-                if (DEBUG_MODE) {
-                    gizmosPoints.Add(new GizmosNode(boneChild, Color.red));
-                }
+#if BONEPHYS_DEBUG
+                gizmosPoints.Add(new GizmosNode(boneChild, Color.red));
+#endif
             }
         }
     }
-    
-    static Dictionary<string, RootConfig> bonesGroups = new Dictionary<string, RootConfig>();
-    
-    class BonesTree 
+
+    void Awake()
     {
-        public Bone root;
-        public RootConfig config;
-        public bool disabled;
-
-        public BonesTree(Transform rootBone) {
-            RootConfig rootConfig = rootBone.gameObject.GetComponent<RootConfig>();
-            if (bonesGroups.ContainsKey(rootConfig.BonesGroup)) {
-                rootConfig.properties = bonesGroups[rootConfig.BonesGroup].properties;
-            }
-
-            config = rootConfig;
-
-            root = new Bone(rootBone, this, null);
-        }
+        singleton = this;
     }
 
-    List<BonesTree> trees = new List<BonesTree>();
-
+#if BONEPHYS_DEBUG
     void OnDrawGizmos() {
         if (gizmosPoints.Count == 0)
             return;
@@ -113,38 +90,21 @@ public class BonesPhysic : MonoBehaviour
     {
         gizmosPoints.Clear();
     }
+#endif
 
-    void Start()
-    {   
-        DEBUG_MODE = debugMode;
-
-        Transform groups = transform.Find("Groups");
-        foreach (Transform group in groups) {
-            RootConfig config = group.gameObject.GetComponent<RootConfig>();
-            bonesGroups.Add(config.BonesGroup, config);
-        }
-
-        GameObject[] bonesArray = GameObject.FindGameObjectsWithTag("PhysicBone");
-
-        foreach(GameObject bone in bonesArray) {
-            trees.Add(new BonesTree(bone.transform));
-        }
-    }
-
-    float fdt;
-
-    void UpdateBone(Bone bone) {
+    public static void UpdateBone(Bone bone, float fdt) 
+    {
         if (bone.parent is not null)
         { 
-            float stiffness = bone.tree.config.properties.Stiffness * (refFdt / (fdt * fdt));
-            float mass = bone.tree.config.properties.Mass;
+            float stiffness = bone.tree.config.Stiffness * (singleton.refFdt / (fdt * fdt));
+            float mass = bone.tree.config.Mass;
 
             Transform boneParent = bone.parent.bone;
 
             Vector3 curPos = bone.curPos;
 
-            float windNoise = Mathf.PerlinNoise(Time.time * (windStrength * 0.5f), bone.id);
-            Vector3 windForce = wind.normalized * windNoise * windStrength;
+            float windNoise = Mathf.PerlinNoise(Time.time * (singleton.windStrength * 0.5f), bone.id);
+            Vector3 windForce = singleton.wind.normalized * windNoise * singleton.windStrength;
 
             Vector3 scaledLocalPos = Vector3.Scale(bone.localPos, boneParent.lossyScale);
 
@@ -152,11 +112,11 @@ public class BonesPhysic : MonoBehaviour
 
             Vector3 baseDir, desiredDir, normalPos;
 
-            if (bone.tree.config.Gravity) {
+            if (bone.tree.Gravity) {
                 Vector3 target = boneParent.position + Vector3.down * scaledLocalPos.magnitude;
 
-                Vector3 inertia = (curPos - bone.prevPos) * (1 - bone.tree.config.properties.Dumping);
-                Vector3 acceleration = (stiffness / mass) * (target - curPos) + mass * G * Vector3.down + windForce/mass;
+                Vector3 inertia = (curPos - bone.prevPos) * (1 - bone.tree.config.Dumping);
+                Vector3 acceleration = (stiffness / mass) * (target - curPos) + mass * singleton.G * Vector3.down + windForce/mass;
                 Vector3 newPos = curPos + inertia + acceleration * (fdt * fdt);
 
                 Vector3 dir = (newPos - boneParent.position).normalized;
@@ -169,7 +129,7 @@ public class BonesPhysic : MonoBehaviour
             else {
                 Vector3 target = boneParent.position + parentRotation * scaledLocalPos;
 
-                Vector3 inertia = (curPos - bone.prevPos) * (1 - bone.tree.config.properties.Dumping);
+                Vector3 inertia = (curPos - bone.prevPos) * (1 - bone.tree.config.Dumping);
                 Vector3 acceleration = (stiffness / mass) * (target - curPos) + windForce/mass;
                 Vector3 newPos = curPos + inertia + acceleration * (fdt * fdt);
 
@@ -191,38 +151,13 @@ public class BonesPhysic : MonoBehaviour
             bone.curPos = normalPos;
         } 
         foreach(Bone child in bone.children) {
-            UpdateBone(child);
+            UpdateBone(child, fdt);
         }
     }
-    void ResetBone(Bone bone) {
-        bone.bone.rotation = bone.bone.parent.rotation * bone.localRot;
-        foreach(Bone child in bone.children) {
-            UpdateBone(child);
-        }
-    }
-
-    void FixedUpdate()
+    public static void ResetBone(Bone bone, float fdt) 
     {
-        fdt = Time.fixedDeltaTime;
-        trees.ForEach(tree => {
-            bool disabled = tree.config.Disable;
-            if (!disabled) {
-                Vector3 viewportPoint = gameCamera.WorldToViewportPoint(tree.root.bone.position);
-                bool isVisible = Mathf.Clamp(viewportPoint.z, 0, maxCameraDistance) == viewportPoint.z  && 
-                    Mathf.Clamp(viewportPoint.x, -0.1f, 1.1f) == viewportPoint.x && 
-                    Mathf.Clamp(viewportPoint.y, -0.1f, 1.1f) == viewportPoint.y;
-
-                disabled = !isVisible;
-            }
-            if (disabled) {
-                if (!tree.disabled) {
-                    ResetBone(tree.root);
-                    tree.disabled = true;
-                }
-                return;
-            }
-            tree.disabled = false;
-            UpdateBone(tree.root);
-        });
+        bone.bone.rotation = bone.bone.parent.rotation * bone.localRot;
+        foreach(Bone child in bone.children)
+            UpdateBone(child, fdt);
     }
 }
