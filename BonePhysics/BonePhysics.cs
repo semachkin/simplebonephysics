@@ -188,8 +188,6 @@ public class BonePhysics : MonoBehaviour
 
             Vector3 normalPos = boneParent.position + parentOffset;
 
-            // collision
-
             if (bone.tree.Collision)
             {
                 Chunk<BoneCollider> chunk = BoneCollider.Chunks.GetChunk(BoneCollider.Chunks.WorldToChunk(normalPos));
@@ -235,7 +233,7 @@ public class BonePhysics : MonoBehaviour
                             Vector3 pushOut = normal * (collider.Radius - distance);
                             Vector3 attraction = target - normalPos;
                             Vector3 slip = attraction - normal * Vector3.Dot(attraction, normal);
-                            
+
                             parentOffset += pushOut + slip * config.Slipping;
                             stretch = parentOffset.magnitude;
                         }
