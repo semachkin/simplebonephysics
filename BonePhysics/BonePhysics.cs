@@ -277,7 +277,7 @@ public class BonePhysics : MonoBehaviour
 
             bone.prevPos = curPos;
 
-            if (!float.IsNaN(normalPos.magnitude))
+            if (!float.IsNaN(normalPos.x))
             {
                 bone.bone.position = normalPos;
                 bone.curPos = normalPos;
