@@ -349,8 +349,11 @@ public class BoneCollider : MonoBehaviour
 
     void Awake()
     {
-        BoneCollider.Chunks ??= new Chunks<BoneCollider>(
-            BonePhysics.Instance.collisionChunkSize, BonePhysics.Instance.collisionGarbageCollectPeriod, Chunks<BoneCollider>.GarbageCollectMode.Weak
-        );
+        if (BoneCollider.Chunks == null && Application.isPlaying)
+        {
+            BoneCollider.Chunks = new Chunks<BoneCollider>(
+                BonePhysics.Instance.collisionChunkSize, BonePhysics.Instance.collisionGarbageCollectPeriod, Chunks<BoneCollider>.GarbageCollectMode.Weak
+            );
+        }
     }
 }

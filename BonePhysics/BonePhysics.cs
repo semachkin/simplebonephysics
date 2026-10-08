@@ -10,6 +10,7 @@ public class BonePhysics : MonoBehaviour
     [Range(0, 100f)]
     public float windStrength;
     public Vector3 wind;
+    public bool windEnabled = true;
 
     public float maxCameraDistance;
     public float minCameraDistance;
@@ -129,8 +130,12 @@ public class BonePhysics : MonoBehaviour
             Transform boneParent = bone.parent.bone;
             Vector3 curPos = bone.curPos;
 
-            float windNoise = Mathf.PerlinNoise(Time.time * (BonePhysics.Instance.windStrength * 0.5f), bone.id);
-            Vector3 windForce = BonePhysics.Instance.wind.normalized * windNoise * BonePhysics.Instance.windStrength;
+            Vector3 windForce = Vector3.zero;
+            if (BonePhysics.Instance.windEnabled)
+            {
+                float windNoise = Mathf.PerlinNoise(Time.time * (BonePhysics.Instance.windStrength * 0.5f), bone.id);
+                windForce = BonePhysics.Instance.wind.normalized * windNoise * BonePhysics.Instance.windStrength;
+            }
 
             Vector3 scaledLocalPos = Vector3.Scale(bone.localPos, boneParent.lossyScale);
             float scaledLocalPosMagnitude = scaledLocalPos.magnitude;
