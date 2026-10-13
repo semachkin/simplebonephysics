@@ -320,9 +320,11 @@ public class BoneCollider : MonoBehaviour
 
     void Start()
     {
-        BoneCollider.Chunks.AddItem(transform);
-
-        lastChunk = BoneCollider.Chunks.WorldToChunk(transform.position);
+        if (Application.isPlaying)
+        {
+            BoneCollider.Chunks.AddItem(transform);
+            lastChunk = BoneCollider.Chunks.WorldToChunk(transform.position);
+        }
     }
 
     void OnDestroy() 
