@@ -107,9 +107,16 @@ public class BonePhysics : MonoBehaviour
             return;
 
         gizmosPoints.ForEach(x => {
-            Gizmos.color = x.color;
-            Gizmos.DrawSphere(x.node.position, 0.01f);
-            Gizmos.DrawLine(x.nodeStart.position, x.node.position);
+            if (x.node != null)
+            {
+                Gizmos.color = x.color;
+                Gizmos.DrawSphere(x.node.position, 0.01f);
+                Gizmos.DrawLine(x.nodeStart.position, x.node.position);
+            }
+            else
+            {
+                gizmosPoints.Remove(x);
+            }
         });
     }
     void OnDestroy() 
@@ -193,7 +200,7 @@ public class BonePhysics : MonoBehaviour
 
             Vector3 normalPos = boneParent.position + parentOffset;
 
-            if (bone.tree.Collision)
+            if (bone.tree.Collision && BoneCollider.Chunks != null)
             {
                 Chunk<BoneCollider> chunk = BoneCollider.Chunks.GetChunk(BoneCollider.Chunks.WorldToChunk(normalPos));
 
@@ -284,8 +291,8 @@ public class BonePhysics : MonoBehaviour
 
             if (!float.IsNaN(normalPos.x))
             {
-                bone.bone.position = normalPos;
-                bone.curPos = normalPos;
+                bone.bone.position = Vector3.Lerp(target, normalPos, bone.tree.influence);
+                bone.curPos = bone.bone.position;
             }
         } 
 
@@ -305,6 +312,6 @@ public class BonePhysics : MonoBehaviour
 
     void Update()
     {
-        BoneCollider.Chunks.UpdateGCTimer();
+        BoneCollider.Chunks?.UpdateGCTimer();
     }
 }
