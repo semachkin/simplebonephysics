@@ -106,18 +106,16 @@ public class BonePhysics : MonoBehaviour
         if (gizmosPoints.Count == 0)
             return;
 
-        gizmosPoints.ForEach(x => {
+        for (int i = 0; i < gizmosPoints.Count; i++)
+        {
+            GizmosNode x = i < gizmosPoints.Count ? gizmosPoints[i] : null;
             if (x.node != null)
             {
                 Gizmos.color = x.color;
                 Gizmos.DrawSphere(x.node.position, 0.01f);
                 Gizmos.DrawLine(x.nodeStart.position, x.node.position);
             }
-            else
-            {
-                gizmosPoints.Remove(x);
-            }
-        });
+        }
     }
     void OnDestroy() 
     {
@@ -211,6 +209,8 @@ public class BonePhysics : MonoBehaviour
 
                     foreach (BoneCollider collider in neighbor.items)
                     {
+                        if ((collider.collisionLayers & bone.tree.collisionLayers) == 0) continue;
+
                         Vector3 offset;
                         float distance;
                         bool collide = false;

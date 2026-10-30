@@ -19,6 +19,8 @@ public class BoneTree : MonoBehaviour
     [Range(0, 1)]
     public float influence = 1;
 
+    public int collisionLayers = 1;
+
     public bool? Active => hub?.Active;
 
     [HideInInspector]

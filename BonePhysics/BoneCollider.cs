@@ -267,10 +267,13 @@ public class BoneCollider : MonoBehaviour
     public Transform point0;
     public Transform point1;
 
+    [Range(0,0.5f)]
     public float Radius;
 
-    public Vector3 P0 => point0?.position ?? Vector3.zero;
-    public Vector3 P1 => point1?.position ?? P0;
+    public Vector3 P0 => point0 != null ? point0.position : Vector3.zero;
+    public Vector3 P1 => point1 != null ? point1.position : P0;
+
+    public int collisionLayers = 1;
 
     public static Chunks<BoneCollider> Chunks;
 
