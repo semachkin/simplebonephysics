@@ -273,6 +273,9 @@ public class BoneCollider : MonoBehaviour
     public Vector3 P0 => point0 != null ? point0.position : Vector3.zero;
     public Vector3 P1 => point1 != null ? point1.position : P0;
 
+    [HideInInspector]
+    public bool IsSphere;
+
     public int collisionLayers = 1;
 
     public static Chunks<BoneCollider> Chunks;
@@ -328,6 +331,8 @@ public class BoneCollider : MonoBehaviour
             BoneCollider.Chunks.AddItem(transform);
             lastChunk = BoneCollider.Chunks.WorldToChunk(transform.position);
         }
+
+        IsSphere = P0 == P1;
     }
 
     void OnDestroy() 

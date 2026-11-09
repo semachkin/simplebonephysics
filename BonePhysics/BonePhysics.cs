@@ -215,7 +215,7 @@ public class BonePhysics : MonoBehaviour
                         float distance;
                         bool collide = false;
 
-                        if (collider.P0 == collider.P1)
+                        if (collider.IsSphere)
                         {
                             offset = normalPos - collider.P0;
                             distance = offset.magnitude;
